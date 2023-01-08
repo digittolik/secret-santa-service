@@ -76,12 +76,6 @@ async fn async_main() -> tide::Result<()> {
         "))
     });
 
-    // app.at("/").post(|mut req: Request<()>| async move {
-    //     let bb: Reg = req.body_json().await?; 
-    //     Ok(format!("that's post {} {}", bb.nickname, bb.password))
-    // });
-
-
     app.at("/registration").post(|req: Request<()>| async move {
         let user = get_user(req).await?;
         if db::register_user(&user).await? {
