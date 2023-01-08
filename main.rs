@@ -1,9 +1,6 @@
 use tide::{Request, Error};
 use futures::executor::block_on;
 
-use db::{User, is_registered};
-mod db;
-
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct Reg {
@@ -50,7 +47,6 @@ async fn get_mka_user(mut req: Request<()>) -> Result<(User, u64, u64), Error> {
 
 
 async fn async_main() -> tide::Result<()> {
-    db::check_tables().await?;
 
     let mut app = tide::new();
 
@@ -78,8 +74,6 @@ async fn async_main() -> tide::Result<()> {
 
     app.at("/registration").post(|req: Request<()>| async move {
         let user = get_user(req).await?;
-        if db::register_user(&user).await? {
-            return Ok("\n\nRegistred!\n")
         }
         Ok("\n\nAlready registered\n")
     });
@@ -89,7 +83,6 @@ async fn async_main() -> tide::Result<()> {
         let user_id = is_registered(&user).await?;
         if user_id != 0 {
             user.set_id(user_id as u64).await;
-            let group = db::add_group(user).await?;
             return Ok(format!("\n\ngroup {} created\n", group.get_id().await))
         }
         Ok(format!("\n\ngo register(/createGroup)\n"))
@@ -101,10 +94,7 @@ async fn async_main() -> tide::Result<()> {
         if user_id != 0 {
             user.set_id(user_id as u64).await;
             let mut groups = String::new();
-            for group in db::get_user_groups(user.get_id().await, Vec::new()).await? {
-                groups += &*group.to_string();
-                groups += "\n";
-            }
+ 
             Ok(format!("\n\n{}\n", groups))
         } else {
             Ok(format!("\n\ngo register(/checkGroups)\n"))
@@ -115,10 +105,7 @@ async fn async_main() -> tide::Result<()> {
         let user = get_user(req).await?;
         if is_registered(&user).await? != 0 {
             let mut groups = String::new();
-            for group in db::get_available_groups(Vec::new()).await? {
-                groups += &*group.to_string();
-                groups += "\n";
-            }
+ 
             Ok(format!("\n\n{}\n", groups))
         } else {
             Ok(format!("\n\ngo register(/all-groups)\n"))
@@ -132,10 +119,6 @@ async fn async_main() -> tide::Result<()> {
         let user_id = is_registered(&user).await?;
         if user_id != 0 {
             user.set_id(user_id as u64).await;
-            let res = db::join_group(user_id as u64, group_id).await?;
-            if res {
-                return Ok(format!("\n\nsuccess\n"))
-            }
             return Ok(format!("\n\nfail\n"))
         }
         Ok(format!("\n\ngo-register(/joinGroup)\n"))
@@ -148,10 +131,6 @@ async fn async_main() -> tide::Result<()> {
         let user_id = is_registered(&user).await?;
         if user_id != 0 {
             user.set_id(user_id as u64).await;
-            let res = db::leave_group(user_id as u64, group_id).await?;
-            if res {
-                return Ok(format!("\n\nsuccess\n"))
-            }
             return Ok(format!("\n\nfail\n"))
         }
         Ok(format!("\n\ngo-register(/leaveGroup)\n"))
@@ -167,10 +146,6 @@ async fn async_main() -> tide::Result<()> {
         let user_id = is_registered(&user).await?;
         if user_id != 0 {
             user.set_id(user_id as u64).await;
-            let res = db::make_admin(user_id as u64, group_id, other_user_id).await?;
-            if res {
-                return Ok(format!("\n\nsuccess\n"))
-            }
             return Ok(format!("\n\nfail\n"))
         }
         Ok(format!("\n\ngo register(/makeAdmin)\n"))
@@ -185,17 +160,7 @@ async fn async_main() -> tide::Result<()> {
         let user_id = is_registered(&user).await?;
         if user_id != 0 {
             user.set_id(user_id as u64).await;
-            let admin = db::is_admin(user_id as u64, group_id).await?;
-            if admin {
-                let members = db::get_group_members(Vec::new(), group_id).await?;
-                let mut res = String::new();
-                for member in members {
-                    let role = match member.1 {
-                        true => String::from("Admin"),
-                        false => String::from("Member")
-                    };
-                    res += &format!("{}: {}\n", member.0, role);
-                }
+ 
                 return Ok(format!("\n\n{res}\n"))
             }
             return Ok(format!("\n\nfail\n"))
@@ -210,9 +175,7 @@ async fn async_main() -> tide::Result<()> {
         let user_id = is_registered(&user).await?;
         if user_id != 0 {
             user.set_id(user_id as u64).await;
-            if db::drop_group(user_id as u64, group_id).await? {
-                return Ok(format!("\n\nsuccess\n"))
-            }
+
             return Ok(format!("\n\nfail\n"))
         }
         Ok(format!("\n\ngo register(/dropGroup)\n"))
@@ -224,10 +187,7 @@ async fn async_main() -> tide::Result<()> {
         let user = clg_user.0;
         let user_id = is_registered(&user).await?;
         if user_id != 0 {
-            let pair = db::get_pair(user_id as u64, group_id).await?;
-            if pair != 0 {
-                return Ok(format!("\n\n{pair}\n"))
-            }
+
             return Ok(format!("\n\nfail\n"))
         }
         Ok(format!("\n\ngo register(/getPair)\n"))
